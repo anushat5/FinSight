@@ -1,19 +1,11 @@
-import streamlit as st
-import openai
+from openai import OpenAI
 import os
 
-def show_ai_assistant():
-    st.subheader("💡 AI Financial Coach")
+client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    query = st.text_area("Ask anything about your finances:", height=150)
+response = client.chat.completions.create(
+    model="gpt-3.5-turbo",
+    messages=[{"role": "user", "content": "Hi"}]
+)
 
-    if st.button("Get Advice") and query:
-        try:
-            response = openai.ChatCompletion.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": query}]
-            )
-            st.success(response['choices'][0]['message']['content'])
-        except Exception as e:
-            st.error(f"Error: {e}")
+print(response.choices[0].message.content)
