@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.express as px
 from utils import load_data, categorize_expenses
 
-def show_dashboard():
+def show_dashboard(df):
     st.title("📊 Personal Finance Dashboard")
 
     uploaded_file = st.file_uploader("📁 Upload your transaction CSV", type="csv")
