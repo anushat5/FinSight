@@ -7,6 +7,8 @@ st.set_page_config(page_title="FinSight - Personal Finance App", layout="wide")
 st.title("💰 FinSight – Personal Finance Tracker")
 
 uploaded_file = st.sidebar.file_uploader("📁 Upload your transaction CSV", type="csv")
+df = load_data(uploaded_file)
+df = categorize_expenses(df)
 
 if uploaded_file and "data" not in st.session_state:
     df = load_data(uploaded_file)
