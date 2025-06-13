@@ -1,7 +1,6 @@
 import streamlit as st
 from dashboard import show_dashboard
 from forecast import show_forecast
-from assistant import show_ai_assistant
 from utils import load_data, categorize_expenses
 
 st.set_page_config(page_title="FinSight - Personal Finance AI", layout="wide")
