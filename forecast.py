@@ -1,38 +1,55 @@
 import streamlit as st
 import pandas as pd
 from prophet import Prophet
-from utils import load_data, categorize_expenses
+from utils import load_data, categorize_expenses, prepare_prophet_data
 import plotly.graph_objs as go
 
+
 def show_forecast():
-    st.subheader("📈 Spending Forecast")
+    st.title("🔮 Expense Forecasting")
+    st.markdown(
+        "Upload your transaction data to generate a **30-day expense forecast** using AI (Prophet)."
+    )
 
-    uploaded_file = st.file_uploader("Upload transaction data", type="csv", key="forecast_upload")
+    uploaded_file = st.file_uploader("📁 Upload CSV file", type="csv", key="forecast_file")
+
     if uploaded_file:
-        df = load_data(uploaded_file)
-        df = categorize_expenses(df)
-        df = df[df['Category'] != 'Income']
-        df['Date'] = pd.to_datetime(df['Date'])
+        with st.spinner("Processing your data..."):
+            # Step 1: Load & clean
+            df = load_data(uploaded_file)
+            df = categorize_expenses(df)
+            prophet_df = prepare_prophet_data(df)
 
-        # Group by date
-        df_grouped = df.groupby('Date')['Amount'].sum().reset_index()
-        df_grouped.columns = ['ds', 'y']
-        df_grouped['y'] = -df_grouped['y']  # Prophet expects positive numbers
+            # Step 2: Forecast
+            try:
+                model = Prophet()
+                model.fit(prophet_df)
+                future = model.make_future_dataframe(periods=30)
+                forecast = model.predict(future)
 
-        try:
-            m = Prophet()
-            m.fit(df_grouped)
-            future = m.make_future_dataframe(periods=30)
-            forecast = m.predict(future)
+                # Step 3: Plot
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=prophet_df['ds'], y=prophet_df['y'],
+                                         mode='lines+markers', name='Actual Spend'))
+                fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'],
+                                         mode='lines', name='Forecasted Spend'))
 
-            # Plot forecast with Plotly
-            fig = go.Figure()
-            fig.add_trace(go.Scatter(x=df_grouped['ds'], y=df_grouped['y'], name='Actual Spend'))
-            fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'], name='Forecast Spend'))
-            st.plotly_chart(fig, use_container_width=True)
-        except Exception as e:
-            st.error(f"Error in forecasting: {e}")
+                fig.update_layout(title="📊 30-Day Expense Forecast",
+                                  xaxis_title="Date", yaxis_title="Spend Amount",
+                                  template="plotly_white")
+
+                st.success("Forecast generated!")
+                st.plotly_chart(fig, use_container_width=True)
+
+                # Optional: Show forecasted data table
+                st.subheader("🔍 Forecast Data (Next 30 Days)")
+                forecast_filtered = forecast[['ds', 'yhat']].tail(30)
+                forecast_filtered.columns = ['Date', 'Predicted Spend']
+                st.dataframe(forecast_filtered)
+
+            except Exception as e:
+                st.error(f"❌ Forecasting failed: {e}")
     else:
-        st.info("Upload your data to forecast future spending.")
+        st.info("Upload your `.csv` file with transaction history to begin.")
 
-        
+          
