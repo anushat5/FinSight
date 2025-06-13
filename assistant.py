@@ -1,11 +1,28 @@
 from openai import OpenAI
-import os
+import streamlit as st
 
-client = OpenAI(api_key=os.getenv("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"))
+# Initialize the OpenAI client
+client = OpenAI()
 
-response = client.chat.completions.create(
-    model="gpt-3.5-turbo",
-    messages=[{"role": "user", "content": "Hi"}]
-)
+def show_ai_assistant():
+    st.title("💬 AI Financial Assistant")
+    st.write("Ask me anything about your personal finances!")
 
-print(response.choices[0].message.content)
+    user_input = st.text_area("💡 Ask a question (e.g., 'How can I save more each month?')")
+
+    if st.button("Ask") and user_input.strip():
+        with st.spinner("Thinking..."):
+            try:
+                response = client.chat.completions.create(
+                    model="gpt-3.5-turbo",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful financial assistant."},
+                        {"role": "user", "content": user_input}
+                    ]
+                )
+                reply = response.choices[0].message.content
+                st.success("🧠 Response:")
+                st.write(reply)
+
+            except Exception as e:
+                st.error(f"❌ Error: {e}")
