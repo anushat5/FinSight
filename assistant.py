@@ -4,7 +4,7 @@ import streamlit as st
 # Initialize the OpenAI client
 client = OpenAI()
 
-def show_ai_assistant():
+def show_ai_assistant(df):
     st.title("💬 AI Financial Assistant")
     st.write("Ask me anything about your personal finances!")
 
