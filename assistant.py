@@ -1,28 +1,48 @@
 from openai import OpenAI
 import streamlit as st
+import pandas as pd
 
-# Initialize the OpenAI client
-client = OpenAI()
+# ✅ Uses API key from Streamlit secrets
+client = OpenAI(api_key=st.secrets["openai"]["api_key"])
+
+SYSTEM_PROMPT = (
+    "You are a helpful financial coach. "
+    "You receive a user's transaction dataframe in CSV format and the user's question. "
+    "Give concise, actionable answers with numeric references when helpful."
+)
+
+def df_to_csv_text(df: pd.DataFrame) -> str:
+    """Convert DataFrame to text, limiting to first 200 rows if large."""
+    if len(df) > 200:
+        df_small = df.head(200)
+        note = f"(showing first 200 of {len(df)} rows to save tokens)\n"
+        return note + df_small.to_csv(index=False)
+    return df.to_csv(index=False)
 
 def show_ai_assistant(df):
-    st.title("💬 AI Financial Assistant")
-    st.write("Ask me anything about your personal finances!")
+    st.header("💬 Ask FinSight AI")
+    st.write("I know your uploaded data — ask anything like:")
+    st.markdown("""
+    - "What was my highest spending category last month?"
+    - "Do I spend more on food or transport?"
+    - "Summarize my expenses"
+    """)
 
-    user_input = st.text_area("💡 Ask a question (e.g., 'How can I save more each month?')")
+    q = st.text_area("📝 Your question", height=120)
 
-    if st.button("Ask") and user_input.strip():
-        with st.spinner("Thinking..."):
+    if st.button("Ask") and q.strip():
+        with st.spinner("Thinking…"):
             try:
                 response = client.chat.completions.create(
                     model="gpt-3.5-turbo",
                     messages=[
-                        {"role": "system", "content": "You are a helpful financial assistant."},
-                        {"role": "user", "content": user_input}
-                    ]
+                        {"role": "system", "content": SYSTEM_PROMPT},
+                        {"role": "assistant", "content": df_to_csv_text(df)},
+                        {"role": "user", "content": q},
+                    ],
+                    temperature=0.7,
                 )
-                reply = response.choices[0].message.content
-                st.success("🧠 Response:")
-                st.write(reply)
-
+                st.success("🧠 Answer")
+                st.write(response.choices[0].message.content)
             except Exception as e:
                 st.error(f"❌ Error: {e}")
