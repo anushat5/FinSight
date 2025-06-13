@@ -1,55 +1,34 @@
 import streamlit as st
 import pandas as pd
-from prophet import Prophet
-from utils import load_data, categorize_expenses, prepare_prophet_data
-import plotly.graph_objs as go
+import plotly.express as px
 
+def show_forecast(df):
+    st.subheader("🔮 Expense Forecast")
 
-def show_forecast():
-    st.title("🔮 Expense Forecasting")
-    st.markdown(
-        "Upload your transaction data to generate a **30-day expense forecast** using AI (Prophet)."
-    )
+    # Ensure Date column is in datetime format
+    df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
+    df = df.dropna(subset=['Date'])
 
-    uploaded_file = st.file_uploader("📁 Upload CSV file", type="csv", key="forecast_file")
+    # Filter out income for forecasting expenses only
+    df = df[df['Category'] != 'Income']
 
-    if uploaded_file:
-        with st.spinner("Processing your data..."):
-            # Step 1: Load & clean
-            df = load_data(uploaded_file)
-            df = categorize_expenses(df)
-            prophet_df = prepare_prophet_data(df)
+    if df.empty:
+        st.info("Not enough expense data to forecast.")
+        return
 
-            # Step 2: Forecast
-            try:
-                model = Prophet()
-                model.fit(prophet_df)
-                future = model.make_future_dataframe(periods=30)
-                forecast = model.predict(future)
+    # Aggregate monthly expenses
+    df['Month'] = df['Date'].dt.to_period('M').astype(str)
+    monthly_expense = df.groupby('Month')['Amount'].sum().reset_index()
+    monthly_expense['Month'] = pd.to_datetime(monthly_expense['Month'])
 
-                # Step 3: Plot
-                fig = go.Figure()
-                fig.add_trace(go.Scatter(x=prophet_df['ds'], y=prophet_df['y'],
-                                         mode='lines+markers', name='Actual Spend'))
-                fig.add_trace(go.Scatter(x=forecast['ds'], y=forecast['yhat'],
-                                         mode='lines', name='Forecasted Spend'))
+    # Simple Linear Forecast
+    monthly_expense = monthly_expense.sort_values('Month')
+    monthly_expense['Forecast'] = monthly_expense['Amount'].rolling(window=3, min_periods=1).mean()
 
-                fig.update_layout(title="📊 30-Day Expense Forecast",
-                                  xaxis_title="Date", yaxis_title="Spend Amount",
-                                  template="plotly_white")
+    # Plot
+    fig = px.line(monthly_expense, x='Month', y=['Amount', 'Forecast'],
+                  labels={'value': '₹', 'variable': 'Type'},
+                  title='Monthly Expense & Forecast')
+    st.plotly_chart(fig, use_container_width=True)
 
-                st.success("Forecast generated!")
-                st.plotly_chart(fig, use_container_width=True)
-
-                # Optional: Show forecasted data table
-                st.subheader("🔍 Forecast Data (Next 30 Days)")
-                forecast_filtered = forecast[['ds', 'yhat']].tail(30)
-                forecast_filtered.columns = ['Date', 'Predicted Spend']
-                st.dataframe(forecast_filtered)
-
-            except Exception as e:
-                st.error(f"❌ Forecasting failed: {e}")
-    else:
-        st.info("Upload your `.csv` file with transaction history to begin.")
-
-          
+    st.caption("⚠️ Forecast is based on a rolling average of the past 3 months. For better accuracy, integrate ML models later.")
