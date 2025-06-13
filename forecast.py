@@ -5,7 +5,7 @@ from utils import load_data, categorize_expenses, prepare_prophet_data
 import plotly.graph_objs as go
 
 
-def show_forecast(df):
+def show_forecast():
     st.title("🔮 Expense Forecasting")
     st.markdown(
         "Upload your transaction data to generate a **30-day expense forecast** using AI (Prophet)."
